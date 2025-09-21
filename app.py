@@ -208,26 +208,24 @@ def extract_youtube_captions(url):
             if not caption_data:
                 return None
             
-            # Find the best format (prefer vtt or ttml)
+            # Find the best format (prefer json3 or vtt, then others)
             best_format = None
+            preferred_exts = ['json3', 'vtt', 'ttml', 'srv3', 'srv2', 'srv1']
             for fmt in caption_data:
-                if fmt['ext'] in ['vtt', 'ttml', 'srv3', 'srv2', 'srv1']:
+                if fmt.get('ext') in preferred_exts:
                     best_format = fmt
                     break
             
             if not best_format:
                 best_format = caption_data[0]  # Fallback to first available
             
-            # Download the caption content
+            # Download the caption content using yt-dlp urlopen to include headers/cookies
             caption_url = best_format['url']
-            
-            # Use yt-dlp's built-in method to get subtitle content
-            import urllib.request
-            with urllib.request.urlopen(caption_url) as response:
-                caption_content = response.read().decode('utf-8')
+            caption_bytes = ydl.urlopen(caption_url).read()
+            caption_content = caption_bytes.decode('utf-8', errors='ignore')
             
             # Parse the caption content
-            parsed_text = parse_caption_content(caption_content, best_format['ext'])
+            parsed_text = parse_caption_content(caption_content, best_format.get('ext', ''))
             
             return {
                 'text': parsed_text,
@@ -245,6 +243,8 @@ def parse_caption_content(content, format_type):
     try:
         if format_type == 'vtt':
             return parse_vtt_content(content)
+        elif format_type == 'json3':
+            return parse_json3_content(content)
         elif format_type in ['ttml', 'srv3', 'srv2', 'srv1']:
             return parse_xml_content(content)
         else:
@@ -279,6 +279,29 @@ def parse_vtt_content(vtt_content):
                 text_lines.append(clean_line)
     
     return ' '.join(text_lines)
+
+def parse_json3_content(json_content):
+    """Parse YouTube json3 automatic caption format"""
+    try:
+        import json
+        # Some responses are prefixed with )]}' to prevent XSSI
+        cleaned = json_content.lstrip() \
+            .removeprefix(")]}'") \
+            .lstrip()  # remove any leading newlines/spaces
+        data = json.loads(cleaned)
+        texts = []
+        for event in data.get('events', []):
+            for seg in event.get('segs', []) or []:
+                t = seg.get('utf8', '')
+                if t:
+                    texts.append(t)
+        # Join and normalize whitespace/newlines
+        text = ''.join(texts)
+        text = text.replace('\n', ' ')
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+    except Exception:
+        return clean_caption_text(json_content)
 
 def parse_xml_content(xml_content):
     """Parse XML-based caption formats (TTML, SRV, etc.)"""

@@ -27,6 +27,7 @@ class YouTubeTranscriber {
         this.captionLanguage = document.getElementById('caption-language');
         this.captionType = document.getElementById('caption-type');
         this.transcriptionText = document.getElementById('transcription-text');
+        this.transcriptionContainer = document.getElementById('transcription-container');
 
         // Action buttons
         this.copyBtn = document.getElementById('copy-btn');
@@ -185,7 +186,8 @@ class YouTubeTranscriber {
 
         // Update transcription
         this.currentTranscription = data.transcription || '';
-        this.transcriptionText.textContent = this.currentTranscription;
+        this.transcriptionText.textContent = this.currentTranscription || '(No captions found)';
+        this.transcriptionContainer.style.display = this.currentTranscription ? 'block' : 'none';
 
         // Scroll to results
         this.resultsSection.scrollIntoView({ behavior: 'smooth' });
