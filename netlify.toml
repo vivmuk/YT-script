@@ -1,0 +1,22 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/transcribe"
+  to = "/.netlify/functions/transcribe"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/download/json"
+  to = "/.netlify/functions/download_json"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/download/docx"
+  to = "/.netlify/functions/download_docx"
+  status = 200
+  force = true
+
