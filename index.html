@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Transcriber</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='0' fill='%230ea5e9'/%3E%3Cpolygon points='26,20 46,32 26,44' fill='%23ffffff'/%3E%3C/svg%3E">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <i class="fab fa-youtube"></i>
+                <h1>YouTube Transcriber</h1>
+            </div>
+            <p class="subtitle">Extract text from YouTube videos using closed captions - fast and accurate!</p>
+        </header>
+
+        <main class="main-content">
+            <div class="input-section">
+                <div class="input-container">
+                    <div class="input-wrapper">
+                        <i class="fas fa-link input-icon"></i>
+                        <input 
+                            type="url" 
+                            id="youtube-url" 
+                            placeholder="Paste your YouTube URL here..."
+                            class="url-input"
+                        >
+                        <button id="transcribe-btn" class="transcribe-btn">
+                            <i class="fas fa-closed-captioning"></i>
+                            Extract Captions
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="loading-section" id="loading-section" style="display: none;">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                </div>
+                <h3>Extracting captions...</h3>
+                <p id="loading-status">Fetching closed captions from YouTube...</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+
+            <div class="results-section" id="results-section" style="display: none;">
+                <div class="video-info">
+                    <h2 id="video-title">Video Title</h2>
+                    <div class="video-meta">
+                        <span id="video-duration"><i class="fas fa-clock"></i> Duration</span>
+                        <span id="video-uploader"><i class="fas fa-user"></i> Uploader</span>
+                        <span id="caption-language"><i class="fas fa-language"></i> Language</span>
+                        <span id="caption-type"><i class="fas fa-info-circle"></i> Type</span>
+                    </div>
+                </div>
+
+                <div class="transcription-container" id="transcription-container" style="display:none;">
+                    <div class="transcription-header">
+                        <h3><i class="fas fa-closed-captioning"></i> Closed Captions</h3>
+                        <div class="transcription-actions">
+                            <button id="copy-btn" class="action-btn">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                            <button id="download-btn" class="action-btn">
+                                <i class="fas fa-file-alt"></i> Download .txt
+                            </button>
+                            <button id="download-json-btn" class="action-btn">
+                                <i class="fas fa-code"></i> Download JSON
+                            </button>
+                            <button id="download-docx-btn" class="action-btn">
+                                <i class="fas fa-file-word"></i> Download Word
+                            </button>
+                        </div>
+                    </div>
+                    <div class="transcription-text" id="transcription-text" style="max-height:none;">
+                        <!-- Transcription will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="error-section" id="error-section" style="display: none;">
+                <div class="error-container">
+                    <i class="fas fa-exclamation-triangle error-icon"></i>
+                    <h3>Oops! Something went wrong</h3>
+                    <p id="error-message">An error occurred while processing your video.</p>
+                    <button id="retry-btn" class="retry-btn">
+                        <i class="fas fa-redo"></i> Try Again
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>Powered by YouTube Closed Captions & yt-dlp</p>
+        </footer>
+    </div>
+
+    <script>window.BACKEND_BASE_URL = '';</script>
+    <script src="/static/script.js"></script>
+</body>
+</html>
+
+

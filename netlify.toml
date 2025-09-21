@@ -9,6 +9,11 @@
   force = true
 
 [[redirects]]
+  from = "/"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
   from = "/download/json"
   to = "/.netlify/functions/download_json"
   status = 200
