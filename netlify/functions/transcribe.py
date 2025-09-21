@@ -2,6 +2,8 @@ import json
 import os
 import re
 import yt_dlp
+from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
+import re as _re
 
 def response(body, status=200, headers=None):
     base = {"Content-Type": "application/json"}
@@ -49,6 +51,34 @@ def handler(event, context):
             return response({"error": "No URL provided"}, 400)
         if not is_valid_youtube_url(url):
             return response({"error": "Invalid YouTube URL"}, 400)
+
+        # Fast path: try official YouTubeTranscriptApi (no download, works when captions are allowed)
+        try:
+            vid = None
+            m = _re.search(r"(?:v=|/)([0-9A-Za-z_-]{11})", url)
+            if m:
+                vid = m.group(1)
+            if vid:
+                s = YouTubeTranscriptApi.get_transcript(vid, languages=['en','en-US','en-GB'])
+                text = ' '.join([i['text'] for i in s if i.get('text')])
+                text = _re.sub(r'\s+', ' ', text).strip()
+                # Minimal video info with yt-dlp for title/duration/uploader
+                with yt_dlp.YoutubeDL({'quiet': True, 'no_warnings': True}) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                def fmt_dur(x):
+                    if not x: return 'Unknown Duration'
+                    h=x//3600; m=(x%3600)//60; se=x%60
+                    return f"{h:02d}:{m:02d}:{se:02d}" if h>0 else f"{m:02d}:{se:02d}"
+                return response({
+                    'transcription': text,
+                    'title': info.get('title','Unknown Title'),
+                    'duration': fmt_dur(info.get('duration',0)),
+                    'uploader': info.get('uploader','Unknown'),
+                    'language': 'en',
+                    'caption_type': 'Manual/Auto (API)'
+                })
+        except (TranscriptsDisabled, NoTranscriptFound):
+            pass
 
         ydl_opts = {
             'writesubtitles': True,

@@ -120,6 +120,7 @@ class YouTubeTranscriber {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify({ url: url })
         });
@@ -127,8 +128,9 @@ class YouTubeTranscriber {
         this.updateProgress(50, 'Fetching closed captions...');
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to extract captions');
+            let errText = 'Failed to extract captions';
+            try { const errorData = await response.json(); errText = errorData.error || errText; } catch {}
+            throw new Error(errText);
         }
 
         this.updateProgress(80, 'Processing caption text...');
