@@ -1,5 +1,4 @@
 import json
-import os
 import re
 import yt_dlp
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound

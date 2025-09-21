@@ -1,6 +1,7 @@
 class YouTubeTranscriber {
     constructor() {
-        this.apiBase = window.BACKEND_BASE_URL || '';
+        this.apiBase = this.normalizeBase(window.BACKEND_BASE_URL);
+        this.netlifyFunctionsBase = this.getNetlifyFunctionsBase();
         this.initializeElements();
         this.attachEventListeners();
         this.currentTranscription = '';
@@ -116,26 +117,10 @@ class YouTubeTranscriber {
         // Simulate progress updates
         this.updateProgress(10, 'Validating YouTube URL...');
         
-        const response = await fetch(`${this.apiBase}/transcribe`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ url: url })
-        });
-
         this.updateProgress(50, 'Fetching closed captions...');
-
-        if (!response.ok) {
-            let errText = 'Failed to extract captions';
-            try { const errorData = await response.json(); errText = errorData.error || errText; } catch {}
-            throw new Error(errText);
-        }
+        const data = await this.apiPostJson('transcribe', { url });
 
         this.updateProgress(80, 'Processing caption text...');
-
-        const data = await response.json();
 
         this.updateProgress(100, 'Captions extracted successfully!');
 
@@ -264,28 +249,23 @@ class YouTubeTranscriber {
             caption_type: (this.captionType.textContent || '').replace(/^[^A-Za-z]*/,'')
         };
 
-        const res = await fetch(`${this.apiBase}/download/json`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        try {
+            const res = await this.apiPostForFile('download/json', payload);
 
-        if (!res.ok) {
-            this.showError('Failed to generate JSON');
-            return;
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${this.safeFilename(this.videoTitle.textContent)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            this.showTemporaryMessage('JSON downloaded!');
+        } catch (error) {
+            this.showError(error.message || 'Failed to generate JSON');
         }
-
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${this.safeFilename(this.videoTitle.textContent)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        this.showTemporaryMessage('JSON downloaded!');
     }
 
     async downloadAsDocx() {
@@ -298,32 +278,194 @@ class YouTubeTranscriber {
             caption_type: (this.captionType.textContent || '').replace(/^[^A-Za-z]*/,'')
         };
 
-        const res = await fetch(`${this.apiBase}/download/docx`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        try {
+            const res = await this.apiPostForFile('download/docx', payload);
 
-        if (!res.ok) {
-            this.showError('Failed to generate Word document');
-            return;
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${this.safeFilename(this.videoTitle.textContent)}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            this.showTemporaryMessage('Word document downloaded!');
+        } catch (error) {
+            this.showError(error.message || 'Failed to generate Word document');
         }
-
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${this.safeFilename(this.videoTitle.textContent)}.docx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        this.showTemporaryMessage('Word document downloaded!');
     }
 
     safeFilename(name) {
         return (name || 'youtube_captions').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    }
+
+    normalizeBase(base) {
+        if (!base) {
+            return null;
+        }
+        return base.replace(/\/+$/, '');
+    }
+
+    getNetlifyFunctionsBase() {
+        const override = typeof window !== 'undefined' ? window.NETLIFY_FUNCTIONS_BASE : null;
+        const base = override !== undefined ? override : '/.netlify/functions';
+        return this.normalizeBase(base);
+    }
+
+    normalizePath(path) {
+        return (path || '').replace(/^\/+/, '');
+    }
+
+    buildApiUrl(base, path) {
+        const cleanedPath = this.normalizePath(path);
+        if (!base) {
+            return `/${cleanedPath}`;
+        }
+        return `${base}/${cleanedPath}`;
+    }
+
+    getApiEndpoints(path) {
+        const endpoints = [];
+        const cleanedPath = this.normalizePath(path);
+
+        if (this.apiBase) {
+            endpoints.push({ url: this.buildApiUrl(this.apiBase, cleanedPath), allowFallback: false });
+            return endpoints;
+        }
+
+        if (this.netlifyFunctionsBase) {
+            endpoints.push({
+                url: this.buildApiUrl(this.netlifyFunctionsBase, cleanedPath),
+                allowFallback: true
+            });
+        }
+
+        endpoints.push({
+            url: this.buildApiUrl(null, cleanedPath),
+            allowFallback: false
+        });
+
+        return endpoints;
+    }
+
+    async apiPostJson(path, payload) {
+        const endpoints = this.getApiEndpoints(path);
+        let lastError = null;
+
+        for (const { url, allowFallback } of endpoints) {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const contentType = response.headers.get('content-type') || '';
+                const isJson = contentType.includes('application/json');
+
+                if (response.ok) {
+                    if (!isJson) {
+                        if (allowFallback) {
+                            lastError = new Error('Unexpected response format from server.');
+                            continue;
+                        }
+                        throw new Error('Unexpected response format from server.');
+                    }
+                    return await response.json();
+                }
+
+                let errorData = null;
+                if (isJson) {
+                    try {
+                        errorData = await response.json();
+                    } catch (parseErr) {
+                        errorData = null;
+                    }
+                }
+
+                const message = errorData && errorData.error ? errorData.error : `Request failed with status ${response.status}`;
+
+                if (allowFallback && (!isJson || response.status === 404)) {
+                    lastError = new Error(message);
+                    continue;
+                }
+
+                const error = new Error(message);
+                error.status = response.status;
+                error.data = errorData;
+                throw error;
+            } catch (error) {
+                if (allowFallback && error instanceof TypeError) {
+                    lastError = error;
+                    continue;
+                }
+                throw error;
+            }
+        }
+
+        throw lastError || new Error('Failed to communicate with the backend service.');
+    }
+
+    async apiPostForFile(path, payload) {
+        const endpoints = this.getApiEndpoints(path);
+        let lastError = null;
+
+        for (const { url, allowFallback } of endpoints) {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const contentType = response.headers.get('content-type') || '';
+                const isJson = contentType.includes('application/json');
+
+                if (response.ok) {
+                    if (allowFallback && (!contentType || contentType.includes('text/html'))) {
+                        lastError = new Error('Unexpected response format from server.');
+                        continue;
+                    }
+                    return response;
+                }
+
+                let errorData = null;
+                if (isJson) {
+                    try {
+                        errorData = await response.clone().json();
+                    } catch (parseErr) {
+                        errorData = null;
+                    }
+                }
+
+                const message = errorData && errorData.error ? errorData.error : `Request failed with status ${response.status}`;
+
+                if (allowFallback && (!isJson || response.status === 404)) {
+                    lastError = new Error(message);
+                    continue;
+                }
+
+                const error = new Error(message);
+                error.status = response.status;
+                error.data = errorData;
+                throw error;
+            } catch (error) {
+                if (allowFallback && error instanceof TypeError) {
+                    lastError = error;
+                    continue;
+                }
+                throw error;
+            }
+        }
+
+        throw lastError || new Error('Failed to communicate with the backend service.');
     }
 
     showTemporaryMessage(message) {
