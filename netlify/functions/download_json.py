@@ -1,4 +1,5 @@
 import json
+import base64
 
 def response_bytes(data: bytes, filename: str, mimetype: str):
     return {
@@ -8,7 +9,7 @@ def response_bytes(data: bytes, filename: str, mimetype: str):
             "Content-Disposition": f"attachment; filename={filename}"
         },
         "isBase64Encoded": True,
-        "body": data.decode('latin1')
+        "body": base64.b64encode(data).decode('ascii')
     }
 
 def handler(event, context):
