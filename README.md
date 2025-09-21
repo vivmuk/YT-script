@@ -126,6 +126,19 @@ python app.py
 gunicorn -w 4 -b 0.0.0.0:5000 app:app
 ```
 
+### Deploy to Render (1-click)
+
+1. Push this repo to GitHub (done).
+2. Create a new Web Service on Render, pick this repo.
+3. Render reads `render.yaml`; no extra config needed.
+4. After deploy, note your backend URL, e.g. `https://your-service.onrender.com`.
+5. If hosting frontend on Netlify, set `window.BACKEND_BASE_URL` before loading `script.js`:
+
+```html
+<script>window.BACKEND_BASE_URL = 'https://your-service.onrender.com'</script>
+<script src="/static/script.js"></script>
+```
+
 ### Docker Deployment (Optional)
 Create a `Dockerfile`:
 

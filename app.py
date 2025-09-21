@@ -2,6 +2,7 @@ import os
 import re
 import io
 from flask import Flask, request, jsonify, render_template, send_file
+from flask_cors import CORS
 import yt_dlp
 import logging
 
@@ -10,6 +11,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route('/')
 def index():

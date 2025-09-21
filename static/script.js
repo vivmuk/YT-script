@@ -1,5 +1,6 @@
 class YouTubeTranscriber {
     constructor() {
+        this.apiBase = window.BACKEND_BASE_URL || '';
         this.initializeElements();
         this.attachEventListeners();
         this.currentTranscription = '';
@@ -115,7 +116,7 @@ class YouTubeTranscriber {
         // Simulate progress updates
         this.updateProgress(10, 'Validating YouTube URL...');
         
-        const response = await fetch('/transcribe', {
+        const response = await fetch(`${this.apiBase}/transcribe`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -261,7 +262,7 @@ class YouTubeTranscriber {
             caption_type: (this.captionType.textContent || '').replace(/^[^A-Za-z]*/,'')
         };
 
-        const res = await fetch('/download/json', {
+        const res = await fetch(`${this.apiBase}/download/json`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -295,7 +296,7 @@ class YouTubeTranscriber {
             caption_type: (this.captionType.textContent || '').replace(/^[^A-Za-z]*/,'')
         };
 
-        const res = await fetch('/download/docx', {
+        const res = await fetch(`${this.apiBase}/download/docx`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
